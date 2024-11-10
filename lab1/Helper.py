@@ -27,6 +27,7 @@ def change_file_to_string_image(image_file_path):
         print(f"Error opening image file: {image_file_path}")
         return None
 
+
 def save_binary_data(data, file_name):
     try:
         current_directory = os.getcwd()
