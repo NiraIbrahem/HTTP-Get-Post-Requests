@@ -3,6 +3,7 @@ import os
 import sys
 import struct
 import io
+from Helper import change_file_to_string_image
 
 BUFFERSIZE = 1024
 
@@ -16,14 +17,27 @@ def calculate_size(data_size, path_size):
         request_size += request_size_no_of_digits
     return request_size
 
-def extract_filename(request):
-    # This is a placeholder function for filename extraction logic.
-    # You need to implement how the filename is extracted from the request
-    return "output_file.txt"
+# def extract_filename(request):
+#     # This is a placeholder function for filename extraction logic.
+#     # You need to implement how the filename is extracted from the request
+#     return "output_file.txt"
+def extract_filename(file_path):
+    return os.path.basename(file_path)
 
-def extract_content_size(buffer):
-    # Placeholder function to extract content size from the header of the HTTP response
-    return 1024  # Example, replace with actual content size extraction logic
+# def extract_content_size(buffer):
+#     # Placeholder function to extract content size from the header of the HTTP response
+#     return 1024  # Example, replace with actual content size extraction logic
+
+def extract_content_size(http_response):
+    content_size = 0
+    pos = http_response.find("content-length: ")
+    if pos != -1:
+        pos = http_response.find("\r\n", pos)
+        if pos != -1:
+            pos = http_response.find("0123456789", pos)
+            if pos != -1:
+                content_size = int(http_response[pos:])
+    return content_size
 
 def save_binary_data(file_data, filename):
     with open(filename, 'wb') as f:
