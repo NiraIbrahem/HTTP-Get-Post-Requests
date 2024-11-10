@@ -3,6 +3,8 @@ import threading
 import os
 import time
 import datetime
+from Helper import change_file_to_string_image  # Import helpers
+
 
 BUFFERSIZE = 1024
 MAXPENDING = 10
