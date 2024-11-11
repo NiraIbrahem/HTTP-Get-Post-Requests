@@ -1,53 +1,87 @@
 from socket import*
-import subprocess
-import io
 import os
+from PIL import Image
+import time
+import sys
+
+serverName = sys.argv[1]
+serverPort = int(sys.argv[2])
+commands_path = sys.argv[3]
+clientSocket = socket(AF_INET , SOCK_STREAM)
+clientSocket.connect((serverName , serverPort))
 
 
-with open("commands.txt", 'r') as file:
-    for request in file:
-        request = request.strip()
-        line = request.split(" ")
-        serverName = line[2] 
-        if(len(line)== 3):
+with open(commands_path, 'r') as file:      
+    for line in file:
+        # read request from file
+        line = line.strip()
+        request = line.split(" ")
+
+        '''
+        serverName = request[2] 
+        # get server port
+        if(len(request)== 3):
             serverPort = 80
-
         else:
-            serverPort = line[3]
+            serverPort = request[3]
+        '''
 
-        clientSocket = socket(AF_INET , SOCK_STREAM)
-        clientSocket.connect((serverName , int(serverPort)))
+        # send request
+        clientSocket.send((line+'\n').encode())
+        # handle get request
+       
+        if(request[0] == 'client_get'):
+            # get response
+            received_message = b""
+            while True :
+                data = clientSocket.recv(1024)
+                if data.endswith(b'END_OF_FILE') :
+                    received_message += data[:-1*len(b'END_OF_FILE')]
+                    break 
+                received_message += data
 
-        if(line[0] == 'client_get'):
-            
-            clientSocket.send(request.encode())
+            # error
+            if(received_message == b"HTTP/1.1 404 Not Found\\r\\n\n"):
+                print(received_message.decode())
 
-            received_message = ""
-            while True:
-                data = clientSocket.recv(4096).decode()
-                received_message = received_message + data
-                if not data:
-                    break  # Exit loop if the connection is closed
-                
-                if(received_message == "HTTP/1.1 404 Not Found\\r\\n\n "):
-                    print(received_message)
-
-                else:
-                    file_name = os.path.basename(line[1])
-                    print(file_name)
+            # save files on device
+            else:
+                # print response
+                print("HTTP/1.1 200 OK\\r\\n\n{")
+                file_name = os.path.basename(request[1])
+                if file_name.endswith('.txt') or file_name.endswith('.html') :
+                    print(received_message.decode())
+                else :
                     #print(received_message)
-                    
-                    if file_name.endswith('.html'):
-                        with open(file_name, 'w') as file:
-                            html_content = received_message.split('\n')
-                            print(html_content)
-                            file.write('\n'.join(map(str,html_content[2:len(html_content)-3])))
+                    print('photo received')
+                print("}\n\\r\\n\n")
 
-                    elif file_name.endswith('.txt'):
-                        with open(file_name, 'w') as file:
-                            text_content = received_message.split('\n')
-                            file.write('\n'.join(map(str,text_content[2:len(text_content)-3])))
+                # open files
+                with open(file_name, 'wb') as file:
+                    # save file on device               
+                    file.write(received_message)
+                
 
-                    elif file_name.endswith('.jpg') or file_name.endswith('.png') or file_name.endswith('.jpeg'):
-                        type = 'image'
-            clientSocket.close()
+
+        # handle post request
+        elif(request[0] == 'client_post') :
+            filename = request[1]
+            # send request 
+            # get html & txt & image file contents
+            if filename.endswith('.html') or filename.endswith('.txt') or filename.endswith('.jpg') or filename.endswith('.png') or filename.endswith('.jpeg') :
+                try :
+                    with open(filename, 'rb') as file:
+                        while chunk := file.read(1024) :
+                            clientSocket.sendall(chunk)
+                        clientSocket.sendall(b'END_OF_FILE')                     
+                except :
+                    clientSocket.sendall(b'Not-foundEND_OF_FILE')
+            else:
+                clientSocket.sendall(b'Not-foundEND_OF_FILE')
+
+            received_message = clientSocket.recv(1024)
+            print(received_message.decode())  
+
+
+    print('end of requests') 
+    #clientSocket.close()
